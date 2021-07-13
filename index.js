@@ -2,7 +2,7 @@ import {
   json,
   serve,
   validateRequest,
-} from "https://deno.land/x/sift@0.1.4/mod.ts";
+} from "https://deno.land/x/sift@0.3.3/mod.ts";
 // AWS has an official SDK that works with browsers. As most Deno Deploy's
 // APIs are similar to browser's, the same SDK works with Deno Deploy.
 // So we import the SDK along with some classes required to insert and
@@ -25,10 +25,11 @@ const client = new DynamoDBClient({
 });
 
 serve({
-  "/articles": handleRequest,
+  "/articles": handleArticlesRequest,
+  "/articles/:slug": handleArticleRequest,
 });
 
-async function handleRequest(request) {
+async function handleArticlesRequest(request) {
   // The endpoint allows GET and POST request. A parameter named "slug"
   // for a GET request to be processed. And body with the fields defined
   // below are required to process POST request.
@@ -119,6 +120,46 @@ async function handleRequest(request) {
   return json(
     {
       message: "couldn't find the title",
+    },
+    { status: 404 },
+  );
+}
+
+async function handleArticleRequest(request, params) {
+  // Handle GET request.
+  try {
+    // We grab the title form the request and send a GetItemCommand
+    // to retrieve the information about the song.
+    const { Item } = await client.send(
+      new GetItemCommand({
+        TableName: "Articles",
+        Key: {
+          slug: { S: params.slug },
+        },
+      }),
+    );
+
+    // The Item property contains all the data, so if it's not undefined,
+    // we proceed to returning the information about the title
+    if (Item) {
+      return json({
+        slug: Item.slug.S,
+        category: Item.category.S,
+        title: Item.title.S,
+        introduction: Item.introduction.S,
+        content: Item.content.S,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+  }
+
+  // We might reach here if an error is thrown during the request to database
+  // or if the Item is not found in the database.
+  // We reflect both conditions with a general message.
+  return json(
+    {
+      message: "couldn't find the slug",
     },
     { status: 404 },
   );
