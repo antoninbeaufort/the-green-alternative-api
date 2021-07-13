@@ -148,6 +148,10 @@ async function handleArticleRequest(request, params) {
         title: Item.title.S,
         introduction: Item.introduction.S,
         content: Item.content.S,
+      }, { 
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
       });
     }
   } catch (error) {
