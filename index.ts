@@ -25,7 +25,7 @@ const client = new DynamoDBClient({
 });
 
 serve({
-  "/songs": handleRequest,
+  "/articles": handleRequest,
 });
 
 async function handleRequest(request) {
