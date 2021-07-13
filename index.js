@@ -126,6 +126,59 @@ async function handleArticlesRequest(request) {
 }
 
 async function handleArticleRequest(request, params) {
+  // The endpoint allows GET and POST request. A parameter named "slug"
+  // for a GET request to be processed. And body with the fields defined
+  // below are required to process POST request.
+  // validateRequest ensures that the provided terms are met by the request.
+  const { error, body } = await validateRequest(request, {
+    GET: {},
+    PUT: {
+      body: ["slug", "category", "title", "introduction", "content"],
+    },
+  });
+  if (error) {
+    return json({ error: error.message }, { status: error.status });
+  }
+
+  // Handle PUT request.
+  if (request.method === "PUT") {
+    try {
+      // When we want to interact with DynamoDB, we send a command using the client
+      // instance. Here we are sending a PutItemCommand to insert the data from the
+      // request.
+      const {
+        $metadata: { httpStatusCode },
+      } = await client.send(
+        new PutItemCommand({
+          TableName: "Articles",
+          Item: {
+            // Here 'S' implies that the value is of type string
+            // and 'N' implies a number.
+            slug: { S: body.slug },
+            category: { S: body.category },
+            title: { S: body.title },
+            introduction: { S: body.introduction },
+            content: { S: body.content },
+          },
+        }),
+      );
+
+      // On a successful put item request, dynamo returns a 200 status code (weird).
+      // So we test status code to verify if the data has been inserted and respond
+      // with the data provided by the request as a confirmation.
+      if (httpStatusCode === 200) {
+        return json({ ...body }, { status: 201 });
+      }
+    } catch (error) {
+      // If something goes wrong while making the request, we log
+      // the error for our reference.
+      console.log(error);
+    }
+
+    // If the execution reaches here it implies that the insertion wasn't successful.
+    return json({ error: "couldn't insert data" }, { status: 500 });
+  }
+
   // Handle GET request.
   try {
     // We grab the title form the request and send a GetItemCommand
